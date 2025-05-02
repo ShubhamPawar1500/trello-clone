@@ -1,16 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Modal,
   TextInput,
   StyleSheet,
   Alert,
-  Animated,
-  PanResponder,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback
@@ -18,35 +14,35 @@ import {
 import CustomHeader from './CustomHeader';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Portal } from 'react-native-paper';
-// import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
+import { getStorage, removeAll, setStorage } from '../Utils/util_functions';
 
-const WINDOW_WIDTH = Dimensions.get('window').width;
 const LIST_WIDTH = 280;
 
 const TrelloBoard = ({ navigation }) => {
   const [lists, setLists] = useState([
-    {
-      id: '1',
-      title: 'To Do',
-      cards: [
-        { id: '1', title: 'Task 1', description: 'Complete task 1', dueDate: new Date() },
-        { id: '2', title: 'Task 2', description: 'Complete task 2', dueDate: new Date() },
-      ]
-    },
-    {
-      id: '2',
-      title: 'In Progress',
-      cards: [
-        { id: '3', title: 'Task 3', description: 'Working on task 3', dueDate: new Date() },
-      ]
-    },
-    {
-      id: '3',
-      title: 'Done',
-      cards: [
-        { id: '4', title: 'Task 4', description: 'Completed task 4', dueDate: new Date() },
-      ]
-    }
+    // {
+    //   id: '1',
+    //   title: 'To Do',
+    //   cards: [
+    //     { id: '1', title: 'Task 1', description: 'Complete task 1', dueDate: new Date() },
+    //     { id: '2', title: 'Task 2', description: 'Complete task 2', dueDate: new Date() },
+    //   ]
+    // },
+    // {
+    //   id: '2',
+    //   title: 'In Progress',
+    //   cards: [
+    //     { id: '3', title: 'Task 3', description: 'Working on task 3', dueDate: new Date() },
+    //   ]
+    // },
+    // {
+    //   id: '3',
+    //   title: 'Done',
+    //   cards: [
+    //     { id: '4', title: 'Task 4', description: 'Completed task 4', dueDate: new Date() },
+    //   ]
+    // }
   ]);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -59,10 +55,8 @@ const TrelloBoard = ({ navigation }) => {
 
   const [addingList, setAddingList] = useState(false);
   const [newListTitle, setNewListTitle] = useState('');
+  const defaultStyles = useDefaultStyles();
 
-  const [draggingList, setDraggingList] = useState(null);
-  const [draggingCard, setDraggingCard] = useState(null);
-  const [draggingCardListId, setDraggingCardListId] = useState(null);
 
   const openCardModal = (card, listId) => {
     setSelectedCard(card);
@@ -79,7 +73,18 @@ const TrelloBoard = ({ navigation }) => {
     setSelectedListId(null);
   };
 
-  const saveCardChanges = () => {
+  useEffect(() => {
+    const getDataFromStorage = async () => {
+      const data = await getStorage('data');
+      if (data) {
+        setLists(JSON.parse(data));
+      }
+    }
+
+    getDataFromStorage()
+  }, [])
+
+  const saveCardChanges = async () => {
     if (editTitle.trim() === '') {
       Alert.alert('Error', 'Title cannot be empty');
       return;
@@ -107,9 +112,10 @@ const TrelloBoard = ({ navigation }) => {
 
     setLists(updatedLists);
     closeCardModal();
+    await setStorage('data', JSON.stringify(updatedLists));
   };
 
-  const deleteCard = () => {
+  const deleteCard = async () => {
     const updatedLists = lists.map(list => {
       if (list.id === selectedListId) {
         return {
@@ -122,9 +128,10 @@ const TrelloBoard = ({ navigation }) => {
 
     setLists(updatedLists);
     closeCardModal();
+    await setStorage('data', JSON.stringify(updatedLists));
   };
 
-  const addNewList = () => {
+  const addNewList = async () => {
     if (newListTitle.trim() === '') {
       Alert.alert('Error', 'List title cannot be empty');
       return;
@@ -137,9 +144,28 @@ const TrelloBoard = ({ navigation }) => {
     };
 
     setLists([...lists, newList]);
+    await setStorage('data', JSON.stringify([...lists, newList]));
     setNewListTitle('');
     setAddingList(false);
   };
+
+  const handleReset = () => {
+    Alert.alert(
+      'Confirm Reset',
+      'Are you sure you want to reset the board?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setLists([]);
+            await removeAll();
+          }
+        }
+      ]
+    )
+  }
 
   const deleteList = (listId) => {
     Alert.alert(
@@ -150,8 +176,10 @@ const TrelloBoard = ({ navigation }) => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setLists(lists.filter(list => list.id !== listId));
+          onPress: async () => {
+            let updated = lists.filter(list => list.id !== listId)
+            setLists(updated);
+            await setStorage('data', JSON.stringify(updated))
           }
         }
       ]
@@ -179,7 +207,7 @@ const TrelloBoard = ({ navigation }) => {
     setLists(updatedLists);
   };
 
-  const onCardDragEnd = (params, listId) => {
+  const onCardDragEnd = async (params, listId) => {
     const { data, from, to } = params;
 
     const updatedLists = lists.map(list => {
@@ -193,6 +221,7 @@ const TrelloBoard = ({ navigation }) => {
     });
 
     setLists(updatedLists);
+    await setStorage('data', JSON.stringify(updatedLists))
   };
 
   const renderCardItem = ({ item: card, drag, isActive }, listId) => {
@@ -212,7 +241,7 @@ const TrelloBoard = ({ navigation }) => {
             <Text style={styles.cardTitle}>{card.title}</Text>
             {card.dueDate && (
               <Text style={styles.cardDueDate}>
-                Due: {card.dueDate.toLocaleDateString()}
+                Due: {new Date(card.dueDate).toLocaleDateString()}
               </Text>
             )}
           </View>
@@ -264,7 +293,7 @@ const TrelloBoard = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <CustomHeader title={'Trello Board'} />
+      <CustomHeader title={'Trello Board'} menus={[{ icon: 'reload', func: handleReset }]} />
 
       <View style={{ flex: 1, marginVertical: 10 }}>
         <DraggableFlatList
@@ -273,7 +302,7 @@ const TrelloBoard = ({ navigation }) => {
           renderItem={renderList}
           horizontal
           containerStyle={{ height: '100%' }}
-          onDragEnd={({ data }) => setLists(data)}
+          onDragEnd={async ({ data }) => { setLists(data); await setStorage('data', JSON.stringify(data)) }}
           ListFooterComponent={
             !addingList ? (
               <TouchableOpacity
@@ -315,93 +344,89 @@ const TrelloBoard = ({ navigation }) => {
       </View>
 
       <Portal>
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        // presentationStyle='fullScreen'
-        onRequestClose={closeCardModal}
-      >
-        <TouchableWithoutFeedback onPress={closeCardModal}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.modalContainer}
-              >
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Edit Card</Text>
-                  
-                  <Text style={styles.inputLabel}>Title</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={editTitle}
-                    onChangeText={setEditTitle}
-                    placeholder="Enter card title"
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={closeCardModal}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContainer}>
+
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Edit Card</Text>
+
+                <Text style={styles.inputLabel}>Title</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  placeholder="Enter card title"
+                />
+
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={editDescription}
+                  onChangeText={setEditDescription}
+                  placeholder="Enter card description"
+                  multiline
+                />
+
+                <Text style={styles.inputLabel}>Due Date</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setShowDatePicker(!showDatePicker)}
+                >
+                  <Text>{new Date(editDueDate).toDateString()}</Text>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={editDueDate}
+                    mode="single"
+                    styles={defaultStyles}
+                    onChange={({ date }) => {
+                      setShowDatePicker(false);
+                      if (date) {
+                        setEditDueDate(date);
+                      }
+                    }}
+                    style={{ borderWidth: 1, borderRadius: 10 }}
                   />
-                  
-                  <Text style={styles.inputLabel}>Description</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea]}
-                    value={editDescription}
-                    onChangeText={setEditDescription}
-                    placeholder="Enter card description"
-                    multiline
-                  />
-                  
-                  <Text style={styles.inputLabel}>Due Date</Text>
-                  <TouchableOpacity 
-                    style={styles.dateButton}
-                    onPress={() => setShowDatePicker(true)}
+                )}
+
+                <View style={styles.modalButtonContainer}>
+                  <TouchableOpacity
+                    style={styles.saveButton}
+                    onPress={saveCardChanges}
                   >
-                    <Text>{editDueDate.toDateString()}</Text>
+                    <Text style={styles.saveButtonText}>Save</Text>
                   </TouchableOpacity>
-                  
-                  {/* {showDatePicker && (
-                    <DateTimePicker
-                      value={editDueDate}
-                      mode="date"
-                      is24Hour={true}
-                      display="default"
-                      onChange={(event, selectedDate) => {
-                        setShowDatePicker(false);
-                        if (selectedDate) {
-                          setEditDueDate(selectedDate);
-                        }
-                      }}
-                    />
-                  )} */}
-                  
-                  <View style={styles.modalButtonContainer}>
-                    <TouchableOpacity 
-                      style={styles.saveButton}
-                      onPress={saveCardChanges}
-                    >
-                      <Text style={styles.saveButtonText}>Save</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={styles.deleteButton}
-                      onPress={deleteCard}
-                    >
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={styles.cancelButton}
-                      onPress={closeCardModal}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
+
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={deleteCard}
+                  >
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={closeCardModal}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
                 </View>
-              </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </Portal>
-      
+
     </View>
   );
 };

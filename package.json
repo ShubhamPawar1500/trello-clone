@@ -9,7 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-native-community/datetimepicker": "^8.3.0",
+    "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-navigation/native": "^7.1.6",
     "@react-navigation/stack": "^7.2.10",
     "expo": "~52.0.46",
@@ -20,7 +20,8 @@
     "react-native-gesture-handler": "^2.22.1",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-paper": "^5.14.0",
-    "react-native-reanimated": "^3.16.7"
+    "react-native-reanimated": "^3.16.7",
+    "react-native-ui-datepicker": "^3.1.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
