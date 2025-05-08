@@ -227,11 +227,11 @@ const TrelloBoard = ({ navigation }) => {
   const renderCardItem = ({ item: card, drag, isActive }, listId) => {
 
     return (
-      <ScaleDecorator>
+      <ScaleDecorator activeScale={0.9}>
         <TouchableOpacity
           style={[
             styles.card,
-            isActive && styles.draggingCard
+            // isActive && styles.draggingCard
           ]}
           onLongPress={drag}
           disabled={isActive}
@@ -253,13 +253,13 @@ const TrelloBoard = ({ navigation }) => {
   const renderList = ({ item: list, drag, isActive }) => {
 
     return (
-      <ScaleDecorator>
+      <ScaleDecorator activeScale={0.8}>
         <TouchableOpacity
           onLongPress={drag}
           disabled={isActive}
           style={[
             styles.list,
-            isActive && styles.draggingList,
+            // isActive && styles.draggingList,
             { height: 100 + (70 * list.cards.length) }
           ]}
         >
